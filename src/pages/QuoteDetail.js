@@ -1,37 +1,55 @@
-import React, { Fragment } from 'react';
-import { useParams, Route, Link } from 'react-router-dom';
-
+import React, { Fragment, useEffect } from 'react';
+import { useParams, Route, Link, useRouteMatch } from 'react-router-dom';
 import HighlightedQuote from '../components/quotes/HighlightedQuote';
-
 import Comments from '../components/comments/Comments';
-
-const DUMMY_QUOTES = [
-  { id: 'q1', author: 'Kusjay', text: 'My awesome quote' },
-  { id: 'q2', author: 'Kelechi', text: 'My amazing quote' },
-  { id: 'q3', author: 'Kelechi', text: 'Another epic quote' },
-  { id: 'q4', author: 'Kelechi', text: 'Be nice quote' },
-];
+import useHttp from '../hooks/use-http';
+import { getSingleQuote } from '../lib/api';
+import LoadingSpinner from '../components/UI/LoadingSpinner';
 
 const QuoteDetail = () => {
+  const match = useRouteMatch();
   const params = useParams();
 
-  const quote = DUMMY_QUOTES.find((quote) => quote.id === params.quoteId);
+  const { quoteId } = params;
 
-  if (!quote) {
+  const {
+    sendRequest,
+    status,
+    data: loadedQuote,
+    error,
+  } = useHttp(getSingleQuote, true);
+
+  useEffect(() => {
+    sendRequest(quoteId);
+  }, [sendRequest, quoteId]);
+
+  if (status === 'pending') {
+    return (
+      <div className='centered'>
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className='centered'>{error}</p>;
+  }
+
+  if (!loadedQuote.text) {
     return <p>No quote found!</p>;
   }
 
   return (
     <Fragment>
-      <HighlightedQuote text={quote.text} author={quote.author} />
-      <Route path={`/quotes/${params.quoteId}`} exact>
+      <HighlightedQuote text={loadedQuote.text} author={loadedQuote.author} />
+      <Route path={match.path} exact>
         <div className='centered'>
-          <Link className='btn--flat' to={`/quotes/${params.quoteId}/comments`}>
+          <Link className='btn--flat' to={`${match.url}/comments`}>
             Load Comments
           </Link>
         </div>
       </Route>
-      <Route path={`/quotes/${params.quoteId}/comments`}>
+      <Route path={`${match.path}/comments`}>
         <Comments />
       </Route>
     </Fragment>
